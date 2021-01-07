@@ -22,7 +22,9 @@ def UpdateStatement(end_date):
     # Grab Existing Sheet
     sheet = workbook.find_sheet(sheet_title)
     if sheet is not None:
-        header = sheet.row_values(1)        
+        header = sheet.row_values(1)  
+        if 'id' not in header:      
+            raise ValueError('Unable to find id column. If sheet is empty, then delete it')
         ids = sheet.col_values(header.index('id') + 1)
         newDF = df[~(df['id'].isin(ids))][header].copy()
         sheet.append_rows(newDF.values.tolist())

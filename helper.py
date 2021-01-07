@@ -42,42 +42,47 @@ def getTransactions(access_token, start_date, end_date, products=['bank']):
     accounts = dict([(x['account_id'], x['name']) for x in client.Accounts.get(access_token)['accounts']])
     output = []
 
-    if 'bank' in products:
-        
-        response = client.Transactions.get(access_token, start_date=start_date, end_date=end_date)
-        bankTransactions  = response['transactions']
-        while len(bankTransactions) < response['total_transactions']:
-            response = client.Transactions.get(access_token, start_date=start_date, end_date=end_date, offset=len(bankTransactions))
-            bankTransactions.extend(response['transactions'])
-        
-        
-        for t in bankTransactions:
-            output.append({
-                'id': t['transaction_id'],
-                'account': accounts[t['account_id']],
-                'amount': t['amount'],
-                'date': t['date'],
-                'name': t['name'],
-                'category': None, 
-            })
+    if 'bank' in products:        
+        counter = 0
+        while True:
+            response = client.Transactions.get(access_token, start_date=start_date, end_date=end_date)
+            counter += len(response['transactions'])
+
+            for t in response['transactions']:
+                if t['pending'] == True:
+                    continue
+
+                output.append({
+                    'id': t['transaction_id'],
+                    'account': accounts[t['account_id']],
+                    'amount': t['amount'],
+                    'date': t['date'],
+                    'name': t['name'],
+                    'category': None, 
+                })
+
+            if counter >= response['total_transactions']:
+                break
+
 
     if 'investment' in products:
-        response = client.InvestmentTransactions.get(access_token, start_date=start_date, end_date=end_date)
-        iTransactions = response['investment_transactions']
-        while len(iTransactions) < response['total_investment_transactions']:
-            response = client.Transactions.get(access_token, start_date=start_date, end_date=end_date, offset=len(iTransactions))
-            iTransactions.extend(response['investment_transactions'])
-        
-        
-        for t in iTransactions:
-            output.append({
-                'id': t['investment_transaction_id'],
-                'account': accounts[t['account_id']],
-                'amount': t['amount'],
-                'date': t['date'],
-                'name': t['name'],
-                'category': None,
-            })            
+        counter = 0
+        while True:
+            response = client.InvestmentTransactions.get(access_token, start_date=start_date, end_date=end_date)
+            counter += len(response['investment_transactions'])
+
+            for t in response['investment_transactions']:
+                output.append({
+                    'id': t['investment_transaction_id'],
+                    'account': accounts[t['account_id']],
+                    'amount': t['amount'],
+                    'date': t['date'],
+                    'name': t['name'],
+                    'category': None,
+                })            
+
+            if counter >= response['total_investment_transactions']:
+                break
 
     
     df = pd.DataFrame.from_dict(output).reset_index(drop=True)
