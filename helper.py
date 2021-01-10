@@ -5,7 +5,8 @@ import yaml
 from tqdm import tqdm 
 import pandas as pd
 from plaid import Client
-
+from model_helper import *
+import joblib
 
 CONFIG = None
 
@@ -13,6 +14,7 @@ with open("config.yaml") as fp:
     CONFIG = yaml.load(fp)
 
 client = None
+MODEL = joblib.load('model.pkl')
 
 def getClient():
     global client
@@ -36,9 +38,14 @@ def MonthDates():
 
 
 
-def getTransactions(access_token, start_date, end_date, products=['bank']):
+def getTransactions(config, start_date, end_date):
 
     client = getClient()
+
+    access_token = config['access_token']
+    products = config['products']
+    inverse = config.get('inverse', False)
+
     accounts = dict([(x['account_id'], x['name']) for x in client.Accounts.get(access_token)['accounts']])
     output = []
 
@@ -55,9 +62,10 @@ def getTransactions(access_token, start_date, end_date, products=['bank']):
                 output.append({
                     'id': t['transaction_id'],
                     'account': accounts[t['account_id']],
-                    'amount': t['amount'],
+                    'amount': -1 * t['amount'] if inverse else t['amount'],
                     'date': t['date'],
                     'name': t['name'],
+                    'merchant': t['merchant_name'],
                     'category': None, 
                 })
 
@@ -78,6 +86,7 @@ def getTransactions(access_token, start_date, end_date, products=['bank']):
                     'amount': t['amount'],
                     'date': t['date'],
                     'name': t['name'],
+                    'merchant': t.get('official_name', None),
                     'category': None,
                 })            
 
@@ -85,27 +94,31 @@ def getTransactions(access_token, start_date, end_date, products=['bank']):
                 break
 
     
-    df = pd.DataFrame.from_dict(output).reset_index(drop=True)
+    df = pd.DataFrame.from_dict(output).reset_index(drop=True)    
     if (df.shape[0] == 0):
         return None
 
-    return df[['id', 'date', 'account', 'name', 'amount', 'category']]
+    df['category'] = MODEL.predict(df)
+    return df
 
 
 def getAllTransactions(start_date, end_date):
 
     df = []   
     for account in tqdm(CONFIG['accounts']):
-        df.append(
-            getTransactions(
-                account['access_token'],
+        transactions = getTransactions(
+                account,
                 start_date,
-                end_date,
-                account['products']
+                end_date
             )
-        )          
+        if transactions is not None:
+            transactions['institution'] = account['name']
+            df.append(transactions) 
 
-    return pd.concat(df, axis=0)
+    if len(df) > 0:        
+        return pd.concat(df, axis=0)
+
+    return None
 
 
 def getAllAccounts():

@@ -16,6 +16,9 @@ def UpdateStatement(end_date):
 
     df = helper.getAllTransactions(start_date, end_date)
 
+    if df is None:
+        return
+
     workbook = Spread(helper.CONFIG['sheets']['workbook'])
     sheet_title = helper.CONFIG['sheets']['transactions']
 
@@ -26,7 +29,8 @@ def UpdateStatement(end_date):
         if 'id' not in header:      
             raise ValueError('Unable to find id column. If sheet is empty, then delete it')
         ids = sheet.col_values(header.index('id') + 1)
-        newDF = df[~(df['id'].isin(ids))][header].copy()
+        colOrder = [x for x in header if x in df.columns]
+        newDF = df[~(df['id'].isin(ids))][colOrder].copy()        
         sheet.append_rows(newDF.values.tolist())
     else:
         workbook.df_to_sheet(df, index=False, sheet=sheet_title, replace=True)

@@ -12,3 +12,8 @@ pyyaml
 pandas
 gspread-pandas
 tqdm
+jupyterlab
+sklearn-pandas
+baikal
+jupyterlab==3
+jedi==0.17.2
