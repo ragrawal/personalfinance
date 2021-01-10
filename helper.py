@@ -44,7 +44,6 @@ def getTransactions(config, start_date, end_date):
 
     access_token = config['access_token']
     products = config['products']
-    inverse = config.get('inverse', False)
 
     accounts = dict([(x['account_id'], x['name']) for x in client.Accounts.get(access_token)['accounts']])
     output = []
@@ -62,7 +61,7 @@ def getTransactions(config, start_date, end_date):
                 output.append({
                     'id': t['transaction_id'],
                     'account': accounts[t['account_id']],
-                    'amount': -1 * t['amount'] if inverse else t['amount'],
+                    'amount': t['amount'],
                     'date': t['date'],
                     'name': t['name'],
                     'merchant': t['merchant_name'],
